@@ -4,10 +4,11 @@
  */
 
 const SECTIONS = {
-  about:    { tpl: 'tpl-about' },
-  quotes:   { tpl: 'tpl-quotes' },
-  projects: { tpl: 'tpl-projects' },
-  contact:  { tpl: 'tpl-contact' },
+  about:     { tpl: 'tpl-about' },
+  quotes:    { tpl: 'tpl-quotes' },
+  projects:  { tpl: 'tpl-projects' },
+  contact:   { tpl: 'tpl-contact' },
+  guestbook: { tpl: 'tpl-guestbook' },
 };
 
 const MOODS = [
@@ -158,8 +159,13 @@ export function initUI(orrery) {
     panel.classList.add('open');
     document.body.classList.add('panel-open');
     orrery.highlight(id);
-    orrery.focusPlanet(id);
-    orrery.showPlanetPreview(id);
+    if (id === 'guestbook') {
+      orrery.focusGuestbookStar();
+      wireGuestbookForm();
+    } else {
+      orrery.focusPlanet(id);
+      orrery.showPlanetPreview(id);
+    }
     if (id === 'contact') wireContactForm();
   }
 
@@ -177,6 +183,7 @@ export function initUI(orrery) {
   });
 
   orrery.onPlanetClick(id => openPanel(id));
+  orrery.onGuestbookClick(() => openPanel('guestbook'));
 
   // ── Contact form ─────────────────────────────────────────────────────────
   function wireContactForm() {
@@ -195,6 +202,46 @@ export function initUI(orrery) {
       form.querySelector('button[type="submit"]').style.display = 'none';
       form.reset();
     });
+  }
+
+  // ── Guestbook form ───────────────────────────────────────────────────────
+  function wireGuestbookForm() {
+    const form = document.querySelector('#guestbook-form');
+    if (!form || form.dataset.wired) return;
+    form.dataset.wired = '1';
+    renderGuestbookEntries();
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const f = Object.fromEntries(new FormData(form));
+      if (!f.thought?.trim()) return;
+      const entry = {
+        name:    f.name?.trim() || 'Anonymous Traveler',
+        thought: f.thought.trim().slice(0, 280),
+        date:    new Date().toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' }),
+      };
+      const all = JSON.parse(localStorage.getItem('orrery-guestbook') || '[]');
+      all.unshift(entry);
+      localStorage.setItem('orrery-guestbook', JSON.stringify(all.slice(0, 30)));
+      document.getElementById('guestbook-note').textContent = '✦ Your thought is now drifting through this system.';
+      form.reset();
+      renderGuestbookEntries();
+    });
+  }
+
+  function renderGuestbookEntries() {
+    const el = document.getElementById('guestbook-entries');
+    if (!el) return;
+    const all = JSON.parse(localStorage.getItem('orrery-guestbook') || '[]');
+    if (!all.length) { el.innerHTML = ''; return; }
+    el.innerHTML = '<p class="gb-heading">Thoughts from other travelers</p>' +
+      all.map(e => `
+        <div class="gb-entry">
+          <div class="gb-meta">
+            <span class="gb-name">${e.name}</span>
+            <span class="gb-date">${e.date}</span>
+          </div>
+          <p class="gb-thought">"${e.thought}"</p>
+        </div>`).join('');
   }
 
   // Kick off onboarding immediately

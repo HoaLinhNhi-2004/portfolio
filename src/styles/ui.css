@@ -276,3 +276,14 @@
 .p3d-label .no { font-size: 11px; letter-spacing: .2em; color: var(--ink-3); }
 .p3d-label:hover .nm, .p3d-label.sel .nm { color: var(--accent); }
 .p3d-label:hover::before, .p3d-label.sel::before { background: var(--accent); }
+.star-label .nm { color: var(--accent); font-size: 10px; }
+.star-label::before { background: var(--accent); }
+
+/* ── Guestbook ── */
+.opt-tag { font-size: 10px; color: var(--ink-3); text-transform: lowercase; letter-spacing: 0; margin-left: 4px; font-family: var(--font-ui); }
+.gb-heading { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin: 28px 0 10px; font-family: var(--font-ui); }
+.gb-entry { border-top: 1px dashed rgba(43,41,38,.25); padding: 12px 0; }
+.gb-meta { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+.gb-name { font-family: var(--font-note); font-size: 15px; font-weight: 600; }
+.gb-date { font-size: 11px; color: var(--ink-3); font-family: var(--font-ui); }
+.gb-thought { font-family: var(--font-note); font-size: 14px; line-height: 1.65; color: var(--ink); font-style: italic; margin: 0; }

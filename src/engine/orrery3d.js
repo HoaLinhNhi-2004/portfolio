@@ -20,6 +20,9 @@ const PLANETS = [
   { id: 'contact',  label: 'Signal',   short: '04', orbit: 350, size: 22, speed: 0.10,  incl: -0.07, axis: 4.6, color: 0xc8c2b8, ring: false },
 ];
 
+// ─── Guestbook wishing star orbit ─────────────────────────────────────────
+const STAR_ORBIT = { orbit: 160, speed: 0.23, incl: 0.42, axis: 0.9 };
+
 // ─── Decorative minor planets (non-clickable) ──────────────────────────────
 const MINOR_PLANETS = [
   { orbit: 152, size: 10, speed: 0.19,  incl:  0.35, axis: 1.5, color: 0xb4baa8 },
@@ -62,6 +65,26 @@ function sunRayTexture() {
     ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
     ctx.stroke();
   }
+  return new THREE.CanvasTexture(c);
+}
+
+function guestbookStarTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d'); ctx.translate(64, 64);
+  // Warm sanguine glow
+  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 56);
+  glow.addColorStop(0, 'rgba(168,85,63,0.45)');
+  glow.addColorStop(1, 'rgba(168,85,63,0)');
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, 56, 0, 7); ctx.fill();
+  // 8-ray sparkle (4 long + 4 short diagonals)
+  ctx.strokeStyle = '#2b2926'; ctx.lineCap = 'round';
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4;
+    const r = i % 2 === 0 ? 48 : 26;
+    ctx.lineWidth = i % 2 === 0 ? 3.5 : 2;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r); ctx.stroke();
+  }
+  ctx.fillStyle = '#2b2926'; ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, 7); ctx.fill();
   return new THREE.CanvasTexture(c);
 }
 
@@ -251,6 +274,44 @@ export function createOrrery() {
     });
   }
 
+  // ── Guestbook wishing star ──
+  const starState = { a: rand(0, 6.28), pivot: null, holder: null, sprite: null, hitMesh: null, lab: null };
+
+  function buildGuestbookStar() {
+    scene.add(orbitLine(STAR_ORBIT.orbit, STAR_ORBIT.incl, STAR_ORBIT.axis));
+
+    const pivot = new THREE.Group();
+    pivot.rotation.set(STAR_ORBIT.incl, STAR_ORBIT.axis, 0);
+    scene.add(pivot);
+
+    const holder = new THREE.Group();
+    pivot.add(holder);
+
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: guestbookStarTexture(), transparent: true, opacity: 0.9, depthWrite: false,
+    }));
+    sprite.scale.setScalar(22);
+    holder.add(sprite);
+
+    // Invisible sphere for raycasting
+    const hitMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(12, 8, 8),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    hitMesh.userData = { type: 'guestbook' };
+    holder.add(hitMesh);
+    clickable.push(hitMesh);
+
+    // DOM label
+    const lab = document.createElement('button');
+    lab.className = 'p3d-label star-label';
+    lab.innerHTML = '<span class="nm">✦ Thoughts</span>';
+    lab.addEventListener('click', e => { e.stopPropagation(); guestbookClickCb?.(); });
+    labelsBox.appendChild(lab);
+
+    Object.assign(starState, { pivot, holder, sprite, hitMesh, lab });
+  }
+
   // ── Stars ──
   let starPoints = null;
 
@@ -399,9 +460,10 @@ export function createOrrery() {
     tween: null,
   };
 
-  let planetClickCb = null;
-  let ufoClickCb    = null;
-  let bgClickCb     = null;
+  let planetClickCb    = null;
+  let ufoClickCb       = null;
+  let bgClickCb        = null;
+  let guestbookClickCb = null;
 
   // ── Camera focus tween (ease-in-out-quad) ──
   function tweenTo(toTarget, toDist, dur = 0.9) {
@@ -437,8 +499,9 @@ export function createOrrery() {
     const hits = ray.intersectObjects(clickable, false);
     if (hits.length) {
       const { type, id } = hits[0].object.userData;
-      if (type === 'planet') { planetClickCb?.(id); return; }
-      if (type === 'ufo')    { ufoClickCb?.(); return; }
+      if (type === 'planet')    { planetClickCb?.(id); return; }
+      if (type === 'ufo')       { ufoClickCb?.(); return; }
+      if (type === 'guestbook') { guestbookClickCb?.(); return; }
     }
     bgClickCb?.();
   });
@@ -569,6 +632,25 @@ export function createOrrery() {
     setTimeout(() => { if (preview) preview.active = false; }, 560);
   }
 
+  // ── Star label projection ──
+  function updateStarLabel() {
+    const { lab, holder } = starState;
+    if (!lab || !holder) return;
+    if (document.body.classList.contains('panel-open')) {
+      lab.style.opacity = 0; lab.style.pointerEvents = 'none'; return;
+    }
+    const pos = new THREE.Vector3();
+    holder.getWorldPosition(pos);
+    pos.y -= 16;
+    const v = pos.project(camera);
+    if (v.z > 1) { lab.style.opacity = 0; lab.style.pointerEvents = 'none'; return; }
+    const x = (v.x * 0.5 + 0.5) * innerWidth;
+    const y = (-v.y * 0.5 + 0.5) * innerHeight;
+    lab.style.transform = `translate(-50%,0) translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+    lab.style.opacity = 1;
+    lab.style.pointerEvents = 'auto';
+  }
+
   // ── Animation loop ──
   let last = performance.now();
 
@@ -589,6 +671,18 @@ export function createOrrery() {
       o.holder.position.set(Math.cos(o.a) * o.def.orbit, 0, Math.sin(o.a) * o.def.orbit);
       o.body.rotation.y += dt * 0.22;
     });
+
+    // Guestbook wishing star — orbits + twinkles
+    if (starState.holder) {
+      if (!reduce) starState.a += STAR_ORBIT.speed * state.speedMult * dt;
+      starState.holder.position.set(
+        Math.cos(starState.a) * STAR_ORBIT.orbit, 0,
+        Math.sin(starState.a) * STAR_ORBIT.orbit
+      );
+      const pulse = 0.60 + Math.sin(now * 0.0048) * 0.40;
+      starState.sprite.material.opacity = pulse;
+      starState.sprite.scale.setScalar(20 + Math.sin(now * 0.0031 + 1.2) * 6);
+    }
 
     // Sun ray sprite slowly rotates
     rays.material.rotation += dt * 0.05;
@@ -654,6 +748,7 @@ export function createOrrery() {
     }
 
     Object.keys(planetObjs).forEach(updateLabel);
+    updateStarLabel();
     requestAnimationFrame(loop);
   }
 
@@ -662,14 +757,23 @@ export function createOrrery() {
     init() {
       buildPlanets();
       buildMinorPlanets();
+      buildGuestbookStar();
       buildStars();
       buildAsteroids();
       requestAnimationFrame(loop);
     },
 
-    onPlanetClick(cb)     { planetClickCb = cb; },
-    onUfoClick(cb)        { ufoClickCb    = cb; },
-    onBackgroundClick(cb) { bgClickCb     = cb; },
+    onPlanetClick(cb)     { planetClickCb    = cb; },
+    onUfoClick(cb)        { ufoClickCb        = cb; },
+    onBackgroundClick(cb) { bgClickCb         = cb; },
+    onGuestbookClick(cb)  { guestbookClickCb  = cb; },
+
+    focusGuestbookStar() {
+      if (!starState.holder) return;
+      const pos = new THREE.Vector3();
+      starState.holder.getWorldPosition(pos);
+      tweenTo(pos.clone(), 200);
+    },
 
     setUfoExpression(type) {
       const ctx = faceCanvas.getContext('2d');

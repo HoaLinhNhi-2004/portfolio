@@ -188,6 +188,27 @@
     </div>
   </template>
 
+  <template id="tpl-guestbook">
+    <span class="sec-kicker rise">✦ · Wishing Star</span>
+    <h1 class="sec-title rise d1">Leave a Thought</h1>
+    <div class="sec-body">
+      <p class="rise d1">A small star drifts through this system collecting impressions from travelers who pass through. What did you find here?</p>
+      <form id="guestbook-form" class="rise d2" novalidate>
+        <div class="field-row">
+          <label>Your name <span class="opt-tag">optional</span></label>
+          <input name="name" type="text" placeholder="a passing traveler…" maxlength="40" autocomplete="off" />
+        </div>
+        <div class="field-row">
+          <label>Your impression</label>
+          <textarea name="thought" placeholder="write freely…" rows="4" maxlength="280" required></textarea>
+        </div>
+        <button type="submit" class="btn-sketch accent" style="width:100%">Send into orbit →</button>
+        <p class="form-note" id="guestbook-note"></p>
+      </form>
+      <div id="guestbook-entries" class="rise d3"></div>
+    </div>
+  </template>
+
   <!-- Tweaks panel mount point -->
   <div id="tweaks-root"></div>
 
