@@ -69,22 +69,35 @@ function sunRayTexture() {
 }
 
 function guestbookStarTexture() {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const ctx = c.getContext('2d'); ctx.translate(64, 64);
-  // Warm sanguine glow
-  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 56);
-  glow.addColorStop(0, 'rgba(168,85,63,0.45)');
-  glow.addColorStop(1, 'rgba(168,85,63,0)');
-  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, 56, 0, 7); ctx.fill();
-  // 8-ray sparkle (4 long + 4 short diagonals)
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const ctx = c.getContext('2d'); ctx.translate(128, 128);
+  // Layered glow — outer soft halo
+  const outer = ctx.createRadialGradient(0, 0, 0, 0, 0, 120);
+  outer.addColorStop(0,   'rgba(168,85,63,0.35)');
+  outer.addColorStop(0.5, 'rgba(168,85,63,0.18)');
+  outer.addColorStop(1,   'rgba(168,85,63,0)');
+  ctx.fillStyle = outer; ctx.beginPath(); ctx.arc(0, 0, 120, 0, 7); ctx.fill();
+  // Inner bright core
+  const inner = ctx.createRadialGradient(0, 0, 0, 0, 0, 38);
+  inner.addColorStop(0,   'rgba(220,160,100,0.9)');
+  inner.addColorStop(0.6, 'rgba(168,85,63,0.55)');
+  inner.addColorStop(1,   'rgba(168,85,63,0)');
+  ctx.fillStyle = inner; ctx.beginPath(); ctx.arc(0, 0, 38, 0, 7); ctx.fill();
+  // 4 long cardinal rays
   ctx.strokeStyle = '#2b2926'; ctx.lineCap = 'round';
-  for (let i = 0; i < 8; i++) {
-    const a = (i * Math.PI) / 4;
-    const r = i % 2 === 0 ? 48 : 26;
-    ctx.lineWidth = i % 2 === 0 ? 3.5 : 2;
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r); ctx.stroke();
+  for (let i = 0; i < 4; i++) {
+    const a = (i * Math.PI) / 2;
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a)*100, Math.sin(a)*100); ctx.stroke();
   }
-  ctx.fillStyle = '#2b2926'; ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, 7); ctx.fill();
+  // 4 shorter diagonal rays
+  for (let i = 0; i < 4; i++) {
+    const a = (i * Math.PI) / 2 + Math.PI / 4;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a)*56, Math.sin(a)*56); ctx.stroke();
+  }
+  // Solid center dot
+  ctx.fillStyle = '#2b2926'; ctx.beginPath(); ctx.arc(0, 0, 9, 0, 7); ctx.fill();
   return new THREE.CanvasTexture(c);
 }
 
@@ -317,12 +330,17 @@ export function createOrrery() {
   // ── Stars ──
   let starPoints = null;
 
+  let starPointsFar = null;
+
   function buildStars() {
-    if (starPoints) { scene.remove(starPoints); starPoints.geometry.dispose(); }
-    const N   = Math.round(900 * state.density);
+    if (starPoints)    { scene.remove(starPoints);    starPoints.geometry.dispose(); }
+    if (starPointsFar) { scene.remove(starPointsFar); starPointsFar.geometry.dispose(); }
+
+    // Main star field — dense small dots
+    const N   = Math.round(2800 * state.density);
     const pos = new Float32Array(N * 3);
     for (let i = 0; i < N; i++) {
-      const r = rand(650, 1900), th = rand(0, Math.PI * 2), ph = Math.acos(rand(-1, 1));
+      const r = rand(620, 2200), th = rand(0, Math.PI * 2), ph = Math.acos(rand(-1, 1));
       pos[i*3]   = r * Math.sin(ph) * Math.cos(th);
       pos[i*3+1] = r * Math.cos(ph);
       pos[i*3+2] = r * Math.sin(ph) * Math.sin(th);
@@ -330,10 +348,27 @@ export function createOrrery() {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     starPoints = new THREE.Points(geo, new THREE.PointsMaterial({
-      color: INK, size: 5, map: DOT, transparent: true, opacity: 0.8,
+      color: INK, size: 4.5, map: DOT, transparent: true, opacity: 0.75,
       sizeAttenuation: true, depthWrite: false,
     }));
     scene.add(starPoints);
+
+    // Bright feature stars — sparser, larger
+    const NF    = Math.round(120 * state.density);
+    const posF  = new Float32Array(NF * 3);
+    for (let i = 0; i < NF; i++) {
+      const r = rand(800, 2000), th = rand(0, Math.PI * 2), ph = Math.acos(rand(-1, 1));
+      posF[i*3]   = r * Math.sin(ph) * Math.cos(th);
+      posF[i*3+1] = r * Math.cos(ph);
+      posF[i*3+2] = r * Math.sin(ph) * Math.sin(th);
+    }
+    const geoF = new THREE.BufferGeometry();
+    geoF.setAttribute('position', new THREE.BufferAttribute(posF, 3));
+    starPointsFar = new THREE.Points(geoF, new THREE.PointsMaterial({
+      color: INK, size: 9, map: DOT, transparent: true, opacity: 0.55,
+      sizeAttenuation: true, depthWrite: false,
+    }));
+    scene.add(starPointsFar);
   }
 
   // ── Asteroids & space debris ──
@@ -560,7 +595,7 @@ export function createOrrery() {
     canvas.id = 'planet-preview';
     Object.assign(canvas.style, {
       position: 'fixed', left: '0', top: '0',
-      width: '50vw', height: '100vh',
+      width: '100vw', height: '100vh',
       pointerEvents: 'none',
       zIndex: '5',
       opacity: '0',
@@ -580,10 +615,8 @@ export function createOrrery() {
     pvScene.add(pvDir, new THREE.AmbientLight(0xffffff, 1.1));
 
     function resize() {
-      const w = Math.floor(innerWidth * 0.5);
-      const h = innerHeight;
-      pvRenderer.setSize(w, h);
-      pvCamera.aspect = w / h;
+      pvRenderer.setSize(innerWidth, innerHeight);
+      pvCamera.aspect = innerWidth / innerHeight;
       pvCamera.updateProjectionMatrix();
     }
     resize();
@@ -620,7 +653,8 @@ export function createOrrery() {
 
     preview.scene.add(sphere);
     preview.sphere = sphere;
-    preview.camera.position.set(0, 0, radius * 4);
+    // Shift camera left so the sphere sits left-of-center behind the centered panel
+    preview.camera.position.set(-radius * 0.6, 0, radius * 3.8);
     preview.camera.lookAt(0, 0, 0);
     preview.resize();
     preview.active = true;
@@ -664,7 +698,7 @@ export function createOrrery() {
       const o = planetObjs[p.id];
       if (!reduce) o.a += p.speed * state.speedMult * dt;
       o.holder.position.set(Math.cos(o.a) * p.orbit, 0, Math.sin(o.a) * p.orbit);
-      o.body.rotation.y += dt * 0.3;
+      o.body.rotation.y += dt * 0.8;
     });
 
     // Decorative minor planets
@@ -681,9 +715,10 @@ export function createOrrery() {
         Math.cos(starState.a) * STAR_ORBIT.orbit, 0,
         Math.sin(starState.a) * STAR_ORBIT.orbit
       );
-      const pulse = 0.70 + Math.sin(now * 0.0048) * 0.30;
+      // Two-frequency twinkle for a natural, irregular sparkle
+      const pulse = Math.max(0.25, 0.55 + Math.sin(now * 0.007) * 0.32 + Math.sin(now * 0.021) * 0.18);
       starState.sprite.material.opacity = pulse;
-      starState.sprite.scale.setScalar(34 + Math.sin(now * 0.0031 + 1.2) * 8);
+      starState.sprite.scale.setScalar(38 + Math.sin(now * 0.005) * 12 + Math.sin(now * 0.017) * 6);
     }
 
     // Sun ray sprite slowly rotates
@@ -745,7 +780,7 @@ export function createOrrery() {
 
     // Preview planet spins in sync with the main loop
     if (preview?.active && preview.sphere) {
-      preview.sphere.rotation.y += dt * 1.0;
+      preview.sphere.rotation.y += dt * 1.4;
       preview.renderer.render(preview.scene, preview.camera);
     }
 
