@@ -12,12 +12,20 @@ const INK = 0x2b2926;
 const rand = (a, b) => a + Math.random() * (b - a);
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// ─── Planet definitions ────────────────────────────────────────────────────
+// ─── Main planet definitions ───────────────────────────────────────────────
 const PLANETS = [
-  { id: 'about',    label: 'About',    short: '01', orbit: 120, size: 24, speed: 0.30,  incl:  0.10, axis: 0.4, color: 0xa8a298, ring: false },
-  { id: 'quotes',   label: 'Words',    short: '02', orbit: 190, size: 19, speed: 0.22,  incl: -0.16, axis: 1.9, color: 0xb2aca0, ring: false },
-  { id: 'projects', label: 'Workshop', short: '03', orbit: 272, size: 36, speed: 0.145, incl:  0.20, axis: 3.0, color: 0x9a9488, ring: true  },
-  { id: 'contact',  label: 'Signal',   short: '04', orbit: 350, size: 22, speed: 0.10,  incl: -0.07, axis: 4.6, color: 0xaca69a, ring: false },
+  { id: 'about',    label: 'About',    short: '01', orbit: 120, size: 24, speed: 0.30,  incl:  0.10, axis: 0.4, color: 0xc8c2bc, ring: false },
+  { id: 'quotes',   label: 'Words',    short: '02', orbit: 190, size: 19, speed: 0.22,  incl: -0.16, axis: 1.9, color: 0xcec8c0, ring: false },
+  { id: 'projects', label: 'Workshop', short: '03', orbit: 272, size: 36, speed: 0.145, incl:  0.20, axis: 3.0, color: 0xbab4ac, ring: true  },
+  { id: 'contact',  label: 'Signal',   short: '04', orbit: 350, size: 22, speed: 0.10,  incl: -0.07, axis: 4.6, color: 0xc8c2b8, ring: false },
+];
+
+// ─── Decorative minor planets (non-clickable) ──────────────────────────────
+const MINOR_PLANETS = [
+  { orbit: 152, size: 10, speed: 0.19,  incl:  0.35, axis: 1.5, color: 0xb4baa8 },
+  { orbit: 226, size:  8, speed: 0.155, incl: -0.28, axis: 3.2, color: 0xbcb0aa },
+  { orbit: 318, size: 13, speed: 0.12,  incl:  0.45, axis: 5.0, color: 0xa8b4c0 },
+  { orbit: 400, size:  9, speed: 0.085, incl: -0.18, axis: 0.6, color: 0xc4bca8 },
 ];
 
 // ─── Texture helpers ───────────────────────────────────────────────────────
@@ -66,13 +74,12 @@ function ringTexture() {
 }
 
 // ─── Geometry helpers ──────────────────────────────────────────────────────
-// Gradient graphite cho hành tinh — từ trung đến sáng, tránh mặt tối ngấm đen
-const GRAD = toonGradient(['#7a7468', '#9a9488', '#b8b2a6', '#d4cfc6']);
-// Gradient vàng nắng riêng cho mặt trời
+// Lighter gradient — avoids the near-black shadow band
+const GRAD = toonGradient(['#9a9690', '#b8b4ac', '#d2cec8', '#e8e4de']);
+// Golden gradient for the sun
 const SUN_GRAD = toonGradient(['#9a7010', '#c49020', '#ddb040', '#f2d060']);
 const DOT  = dotTexture();
 
-// grad là optional — mặt trời dùng SUN_GRAD, hành tinh dùng GRAD mặc định
 function celSphere(radius, colorHex, seg = 40, grad = GRAD) {
   const g   = new THREE.Group();
   const geo = new THREE.SphereGeometry(radius, seg, Math.round(seg * 0.8));
@@ -147,7 +154,7 @@ export function createOrrery() {
   dir.position.set(1, 1.3, 0.7);
   scene.add(dir, new THREE.AmbientLight(0xffffff, 1.1));
 
-  // ── Sun — vàng nắng ấm với gradient riêng ──
+  // ── Sun — warm golden with its own gradient ──
   const sun = celSphere(44, 0xd4a020, 48, SUN_GRAD);
   scene.add(sun);
   const sunSpot = new THREE.Mesh(
@@ -159,7 +166,7 @@ export function createOrrery() {
   rays.scale.setScalar(150);
   scene.add(rays);
 
-  // ── Planets ──
+  // ── Main clickable planets ──
   const planetObjs = {};
   const clickable  = [];
 
@@ -217,6 +224,33 @@ export function createOrrery() {
     });
   }
 
+  // ── Decorative minor planets ──
+  const minorObjs = [];
+
+  function buildMinorPlanets() {
+    MINOR_PLANETS.forEach(p => {
+      const pivot = new THREE.Group();
+      pivot.rotation.set(p.incl, p.axis, 0);
+      scene.add(pivot);
+
+      const holder = new THREE.Group();
+      pivot.add(holder);
+
+      const body = celSphere(p.size, p.color, 28);
+      holder.add(body);
+
+      // tiny crater for detail
+      const crater = new THREE.Mesh(
+        new THREE.SphereGeometry(p.size * 0.2, 8, 8),
+        new THREE.MeshBasicMaterial({ color: INK, transparent: true, opacity: 0.35 })
+      );
+      crater.position.set(p.size * 0.45, p.size * 0.4, p.size * 0.55);
+      body.add(crater);
+
+      minorObjs.push({ def: p, pivot, holder, body, a: rand(0, 6.28) });
+    });
+  }
+
   // ── Stars ──
   let starPoints = null;
 
@@ -243,15 +277,12 @@ export function createOrrery() {
   const asteroidGroups = [];
 
   function buildAsteroids() {
-    // Dọn cũ nếu rebuild
     asteroidGroups.forEach(g => scene.remove(g));
     asteroidGroups.length = 0;
 
-    // Vật liệu dùng chung — graphite đậm hơn hành tinh
     const matFill    = new THREE.MeshToonMaterial({ color: 0x948e84, gradientMap: GRAD });
     const matOutline = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
 
-    // Hàm tạo 1 khối đá góc cạnh
     function makeRock(size) {
       const type = Math.floor(rand(0, 3));
       const geo  = type === 0 ? new THREE.OctahedronGeometry(size, 0)
@@ -262,7 +293,6 @@ export function createOrrery() {
       outline.scale.setScalar(1.1);
       g.add(outline);
       g.add(new THREE.Mesh(geo, matFill.clone()));
-      // vặn xoay ngẫu nhiên để trông tự nhiên
       g.rotation.set(rand(0, Math.PI * 2), rand(0, Math.PI * 2), rand(0, Math.PI * 2));
       g.userData.rotSpeed = new THREE.Vector3(
         rand(-0.12, 0.12), rand(-0.18, 0.18), rand(-0.08, 0.08)
@@ -270,7 +300,7 @@ export function createOrrery() {
       return g;
     }
 
-    // ① Vành đai chính — giữa Workshop (272) và Signal (350)
+    // Main asteroid belt — between Workshop (272) and Signal (350)
     const beltCount = Math.round(55 * state.density);
     for (let i = 0; i < beltCount; i++) {
       const a = rand(0, Math.PI * 2);
@@ -282,7 +312,7 @@ export function createOrrery() {
       asteroidGroups.push(rock);
     }
 
-    // ② Vụn đá nhỏ rải rác — khắp không gian, kích thước nhỏ hơn
+    // Scattered debris across the system
     const debrisCount = Math.round(28 * state.density);
     for (let i = 0; i < debrisCount; i++) {
       const a = rand(0, Math.PI * 2);
@@ -294,7 +324,7 @@ export function createOrrery() {
       asteroidGroups.push(rock);
     }
 
-    // ③ Bụi điểm sáng trong vành đai — dùng Points như sao nhưng nhỏ và dày hơn
+    // Dust ring (Points) inside the belt
     const dustN   = Math.round(200 * state.density);
     const dustPos = new Float32Array(dustN * 3);
     for (let i = 0; i < dustN; i++) {
@@ -311,7 +341,7 @@ export function createOrrery() {
       transparent: true, opacity: 0.55, sizeAttenuation: true, depthWrite: false,
     }));
     scene.add(dust);
-    asteroidGroups.push(dust);   // track để dọn khi rebuild
+    asteroidGroups.push(dust);
   }
 
   // ── Meteors ──
@@ -340,7 +370,6 @@ export function createOrrery() {
   );
   baseRing.rotation.x = Math.PI / 2; ufo.add(baseRing);
 
-  // red lights
   for (let i = 0; i < 3; i++) {
     const a  = (i / 3) * Math.PI * 2;
     const lt = new THREE.Mesh(new THREE.SphereGeometry(1.7, 10, 8), new THREE.MeshBasicMaterial({ color: 0xa8553f }));
@@ -348,7 +377,6 @@ export function createOrrery() {
     ufo.add(lt);
   }
 
-  // face billboard
   const faceCanvas = document.createElement('canvas'); faceCanvas.width = faceCanvas.height = 128;
   const faceTex    = new THREE.CanvasTexture(faceCanvas);
   const face       = new THREE.Mesh(
@@ -371,7 +399,6 @@ export function createOrrery() {
     tween: null,
   };
 
-  // Callback slots (set by UI layer)
   let planetClickCb = null;
   let ufoClickCb    = null;
   let bgClickCb     = null;
@@ -387,7 +414,7 @@ export function createOrrery() {
     };
   }
 
-  // ── Click detection (distinguish click from orbit-drag) ──
+  // ── Click detection ──
   const tmp = new THREE.Vector3();
   let down  = null;
 
@@ -399,7 +426,7 @@ export function createOrrery() {
     const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
     const dt    = performance.now() - down.t;
     down = null;
-    if (moved > 7 || dt > 450) return;   // it was a drag
+    if (moved > 7 || dt > 450) return;
 
     const ndc = new THREE.Vector2(
       (e.clientX / innerWidth)  *  2 - 1,
@@ -418,6 +445,7 @@ export function createOrrery() {
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+    if (preview) preview.resize();
   });
 
   // ── DOM label projection ──
@@ -435,13 +463,105 @@ export function createOrrery() {
     o.lab.style.pointerEvents = 'auto';
   }
 
+  // ── Planet preview mini-renderer ──
+  let preview = null;
+
+  function ensurePreview() {
+    if (preview) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.id = 'planet-preview';
+    Object.assign(canvas.style, {
+      position: 'fixed', left: '0', top: '0',
+      width: '50vw', height: '100vh',
+      pointerEvents: 'none',
+      zIndex: '5',
+      opacity: '0',
+      transition: 'opacity 0.55s ease',
+    });
+    document.body.appendChild(canvas);
+
+    const pvRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    pvRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    pvRenderer.setClearColor(0x000000, 0);
+
+    const pvScene  = new THREE.Scene();
+    const pvCamera = new THREE.PerspectiveCamera(40, 1, 0.5, 2000);
+
+    const pvDir = new THREE.DirectionalLight(0xffffff, 1.2);
+    pvDir.position.set(1, 1.3, 0.7);
+    pvScene.add(pvDir, new THREE.AmbientLight(0xffffff, 1.1));
+
+    function resize() {
+      const w = Math.floor(innerWidth * 0.5);
+      const h = innerHeight;
+      pvRenderer.setSize(w, h);
+      pvCamera.aspect = w / h;
+      pvCamera.updateProjectionMatrix();
+    }
+    resize();
+
+    preview = { canvas, renderer: pvRenderer, scene: pvScene, camera: pvCamera, sphere: null, afId: null, resize };
+  }
+
+  function showPlanetPreview(id) {
+    const p = PLANETS.find(pl => pl.id === id); if (!p) return;
+    ensurePreview();
+
+    if (preview.afId) { cancelAnimationFrame(preview.afId); preview.afId = null; }
+    if (preview.sphere) { preview.scene.remove(preview.sphere); preview.sphere = null; }
+
+    const radius = Math.min(p.size * 2.2, 62);
+    const sphere = celSphere(radius, p.color, 52, GRAD);
+    sphere.rotation.x = 0.18;
+
+    const crater = new THREE.Mesh(
+      new THREE.SphereGeometry(radius * 0.18, 12, 10),
+      new THREE.MeshBasicMaterial({ color: INK, transparent: true, opacity: 0.4 })
+    );
+    crater.position.set(radius * 0.5, radius * 0.35, radius * 0.6);
+    sphere.add(crater);
+
+    if (p.ring) {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(radius + 22, 2.5, 8, 80),
+        new THREE.MeshBasicMaterial({ color: INK })
+      );
+      ring.rotation.x = Math.PI / 2 - 0.4;
+      sphere.add(ring);
+    }
+
+    preview.scene.add(sphere);
+    preview.sphere = sphere;
+    preview.camera.position.set(0, 0, radius * 4);
+    preview.camera.lookAt(0, 0, 0);
+    preview.resize();
+
+    function pvLoop() {
+      sphere.rotation.y += 0.009;
+      preview.renderer.render(preview.scene, preview.camera);
+      preview.afId = requestAnimationFrame(pvLoop);
+    }
+    pvLoop();
+
+    requestAnimationFrame(() => { preview.canvas.style.opacity = '1'; });
+  }
+
+  function hidePlanetPreview() {
+    if (!preview) return;
+    preview.canvas.style.opacity = '0';
+    setTimeout(() => {
+      if (preview.afId) { cancelAnimationFrame(preview.afId); preview.afId = null; }
+    }, 560);
+  }
+
   // ── Animation loop ──
   let last = performance.now();
 
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
 
-    // Planets revolve on their tilted orbital planes
+    // Main planets revolve on tilted orbital planes
     PLANETS.forEach(p => {
       const o = planetObjs[p.id];
       if (!reduce) o.a += p.speed * state.speedMult * dt;
@@ -449,10 +569,17 @@ export function createOrrery() {
       o.body.rotation.y += dt * 0.3;
     });
 
+    // Decorative minor planets
+    minorObjs.forEach(o => {
+      if (!reduce) o.a += o.def.speed * state.speedMult * dt;
+      o.holder.position.set(Math.cos(o.a) * o.def.orbit, 0, Math.sin(o.a) * o.def.orbit);
+      o.body.rotation.y += dt * 0.22;
+    });
+
     // Sun ray sprite slowly rotates
     rays.material.rotation += dt * 0.05;
 
-    // Asteroids & debris tumble slowly
+    // Asteroids & debris tumble
     if (!reduce) {
       asteroidGroups.forEach(g => {
         if (g.userData.rotSpeed) {
@@ -513,6 +640,7 @@ export function createOrrery() {
   return {
     init() {
       buildPlanets();
+      buildMinorPlanets();
       buildStars();
       buildAsteroids();
       requestAnimationFrame(loop);
@@ -557,6 +685,9 @@ export function createOrrery() {
         planetObjs[id].lab.classList.add('sel');
       }
     },
+
+    showPlanetPreview(id) { showPlanetPreview(id); },
+    hidePlanetPreview()   { hidePlanetPreview(); },
 
     setPlanetSpeed(m) { state.speedMult = m; },
     setDensity(m)     { state.density = m; buildStars(); buildAsteroids(); },

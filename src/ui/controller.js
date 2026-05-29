@@ -159,6 +159,7 @@ export function initUI(orrery) {
     document.body.classList.add('panel-open');
     orrery.highlight(id);
     orrery.focusPlanet(id);
+    orrery.showPlanetPreview(id);
     if (id === 'contact') wireContactForm();
   }
 
@@ -167,6 +168,7 @@ export function initUI(orrery) {
     document.body.classList.remove('panel-open');
     orrery.highlight(null);
     orrery.resetZoom();
+    orrery.hidePlanetPreview();
   }
 
   $('#panel-close').addEventListener('click', closePanel);
