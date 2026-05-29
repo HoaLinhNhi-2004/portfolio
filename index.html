@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <title>The Sketchbook Orrery — Hoa Linh Nhi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Caveat:wght@500;600;700&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- SVG filter defs for sketch wobble -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <filter id="rough" x="-30%" y="-30%" width="160%" height="160%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="7" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <filter id="rough2" x="-30%" y="-30%" width="160%" height="160%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="22" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="6" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- 3D canvas + DOM label overlay -->
+  <div id="sky"></div>
+  <div id="labels"></div>
+
+  <!-- Texture / mood layers -->
+  <div id="paper-grain"></div>
+  <div id="mood-wash"></div>
+  <div id="vignette"></div>
+
+  <!-- HUD -->
+  <div class="hud hud-logo">
+    <span class="seal"></span>
+    <span>
+      <b>The Orrery</b>
+      <small>Hoa Linh Nhi · Field Notes</small>
+    </span>
+  </div>
+
+  <div class="hud hud-greet" id="greet">
+    <div class="hi" id="greet-hi">Hello, traveler</div>
+    <div class="mood" id="greet-mood"></div>
+  </div>
+
+  <div class="hud hud-legend" id="legend">
+    <div class="row"><span class="dot"></span> click a planet to open</div>
+    <div class="row"><span class="dot" style="border-color:var(--accent)"></span> click the UFO for the menu</div>
+  </div>
+
+  <div class="hud hud-hint" id="hint">
+    <span class="opt"><b>scroll</b> zoom</span>
+    <span class="sep">·</span>
+    <span class="opt"><b>drag</b> orbit 360°</span>
+    <span class="sep">·</span>
+    <span><b>click</b> a planet</span>
+  </div>
+
+  <!-- Onboarding dialogs -->
+  <div id="scrim"></div>
+
+  <div class="dialog sketch-box" id="dlg-name">
+    <span class="tail note">▼ transmission ▼</span>
+    <svg class="ufo-mini" viewBox="-50 -26 100 52">
+      <g filter="url(#rough2)">
+        <ellipse cx="0" cy="4" rx="40" ry="12" fill="none" stroke="#2b2926" stroke-width="2.4"/>
+        <path d="M -22 -1 A 22 18 0 0 1 22 -1" fill="none" stroke="#2b2926" stroke-width="2.4"/>
+      </g>
+    </svg>
+    <h2>Greetings, traveler.</h2>
+    <p>I'm the little scout of this system. Before we drift among the planets — what should I call you?</p>
+    <div class="field-hand">
+      <input id="in-name" type="text" placeholder="your name…" maxlength="22" autocomplete="off" />
+    </div>
+    <div class="row-end">
+      <button class="skip" id="skip-name">skip</button>
+      <button class="btn-sketch accent" id="next-name">Continue →</button>
+    </div>
+  </div>
+
+  <div class="dialog sketch-box alt" id="dlg-mood">
+    <span class="tail note">▼ transmission ▼</span>
+    <h2 id="mood-greet">Lovely to meet you.</h2>
+    <p>How are you feeling on this orbit today?</p>
+    <div class="moods" id="mood-list"></div>
+    <div class="row-end">
+      <button class="skip" id="skip-mood">skip</button>
+    </div>
+  </div>
+
+  <div class="dialog sketch-box" id="dlg-quote">
+    <span class="tail note">▼ a thought for you ▼</span>
+    <h2 id="quote-hi">Here, take this with you —</h2>
+    <blockquote class="quote-line" id="quote-text"></blockquote>
+    <div class="row-end">
+      <button class="btn-sketch accent" id="begin-journey">Begin drifting →</button>
+    </div>
+  </div>
+
+  <!-- Radial menu (around UFO) -->
+  <div id="radial"></div>
+
+  <!-- Section panel (slides in from right) -->
+  <aside id="panel">
+    <svg class="paperclip" width="34" height="70" viewBox="0 0 34 70"
+         fill="none" stroke="#9a948a" stroke-width="3.4" stroke-linecap="round" aria-hidden="true">
+      <path d="M5 64 V17 a12 12 0 0 1 24 0 V52" />
+      <path d="M12 56 V17 a5 5 0 0 1 10 0 V60" />
+    </svg>
+    <button class="close" id="panel-close" aria-label="close">✕</button>
+    <div class="sheet" id="panel-sheet"></div>
+  </aside>
+
+  <!-- Section content templates -->
+  <template id="tpl-about">
+    <span class="sec-kicker rise">Planet 01 · Profile</span>
+    <h1 class="sec-title rise d1">About Me</h1>
+    <div class="sketch-portrait rise d1"><span>drop<br />portrait</span></div>
+    <div class="sec-body">
+      <p class="rise d2">I'm <strong>Hoa Linh Nhi</strong> — a Fullstack &amp; XR developer who likes building things that feel less like software and more like little worlds.</p>
+      <p class="rise d2">My orbit spans the modern web, virtual reality, and the physical world of connected devices — wiring interfaces, databases and hardware into one moving system.</p>
+      <dl class="facts rise d3">
+        <div class="f"><dt>Callsign</dt><dd>Hoa Linh Nhi</dd></div>
+        <div class="f"><dt>Class</dt><dd>Fullstack · XR</dd></div>
+        <div class="f"><dt>Found at</dt><dd>github / HoaLinhNhi-2004</dd></div>
+        <div class="f"><dt>Status</dt><dd>Open to new orbits</dd></div>
+      </dl>
+    </div>
+  </template>
+
+  <template id="tpl-quotes">
+    <span class="sec-kicker rise">Planet 02 · Margins</span>
+    <h1 class="sec-title rise d1">Words I Keep</h1>
+    <div class="sec-body">
+      <p class="rise d1">A few lines I've pencilled into the margins and carry between projects.</p>
+      <div class="quote rise d2"><q>We are made of star-stuff.</q><span class="by">Carl Sagan</span></div>
+      <div class="quote rise d2"><q>The best way to predict the future is to invent it.</q><span class="by">Alan Kay</span></div>
+      <div class="quote rise d3"><q>First, solve the problem. Then, write the code.</q><span class="by">John Johnson</span></div>
+      <div class="quote rise d3"><q>Simplicity is the soul of efficiency.</q><span class="by">Austin Freeman</span></div>
+    </div>
+  </template>
+
+  <template id="tpl-projects">
+    <span class="sec-kicker rise">Planet 03 · Workshop</span>
+    <h1 class="sec-title rise d1">Things I've Built</h1>
+    <div class="sec-body">
+      <div class="proj-card rise d1">
+        <div class="note-date">2025 · XR</div>
+        <h3>VR Chemistry Lab</h3>
+        <p>An immersive lab where students mix reagents and watch real reactions unfold in virtual reality — safe, accurate, endlessly repeatable.</p>
+        <div class="tags"><span>Unity</span><span>C#</span><span>OpenXR</span></div>
+      </div>
+      <div class="proj-card rise d2">
+        <div class="note-date">2024 · FRONTEND</div>
+        <h3>Classroom Dashboard</h3>
+        <p>A calm, real-time control surface for educators — attendance, live metrics and lesson flow, designed for speed and clarity.</p>
+        <div class="tags"><span>React</span><span>Next.js</span><span>Tailwind</span></div>
+      </div>
+      <div class="proj-card rise d3">
+        <div class="note-date">2025 · FULLSTACK · IoT</div>
+        <h3>Bloom — Flower Commerce</h3>
+        <p>An e-commerce platform on Neon Postgres &amp; Prisma, containerised with Docker, with ESP32 / PLC sensors watching cold-storage in real time.</p>
+        <div class="tags"><span>Prisma</span><span>Neon Postgres</span><span>Docker</span><span>ESP32 / PLC</span></div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-contact">
+    <span class="sec-kicker rise">Planet 04 · Signal</span>
+    <h1 class="sec-title rise d1">Say Hello</h1>
+    <div class="sec-body">
+      <p class="rise d1">Every signal that reaches this system gets an answer. Send a note and let's build something.</p>
+      <div class="contact-links rise d2">
+        <a href="https://github.com/HoaLinhNhi-2004" target="_blank" rel="noopener">GitHub <span>HoaLinhNhi-2004 ↗</span></a>
+        <a href="mailto:hoalinhnhi@orbit.dev">Email <span>hoalinhnhi@orbit.dev ↗</span></a>
+        <a href="#">LinkedIn <span>/in/hoalinhnhi ↗</span></a>
+      </div>
+      <form id="contact-form" class="rise d3" novalidate>
+        <div class="field-row"><label>Your name</label><input name="name" type="text" placeholder="who's transmitting?" /></div>
+        <div class="field-row"><label>A short note</label><textarea name="msg" placeholder="what shall we build?"></textarea></div>
+        <button type="submit" class="btn-sketch accent" style="width:100%">Send into orbit →</button>
+        <p class="form-note" id="contact-note"></p>
+      </form>
+    </div>
+  </template>
+
+  <!-- Tweaks panel mount point -->
+  <div id="tweaks-root"></div>
+
+  <!-- Vite entry point -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
