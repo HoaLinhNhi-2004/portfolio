@@ -2,21 +2,22 @@
  * UI controller — onboarding, radial UFO menu, section panel, contact form.
  * Receives an orrery instance (from createOrrery) so it has no global deps.
  */
+import { supabase } from '../lib/supabase.js';
 
 const SECTIONS = {
-  about:     { tpl: 'tpl-about' },
-  quotes:    { tpl: 'tpl-quotes' },
-  projects:  { tpl: 'tpl-projects' },
-  contact:   { tpl: 'tpl-contact' },
-  guestbook: { tpl: 'tpl-guestbook' },
+  about:     { tpl: 'tpl-about',     label: 'About' },
+  quotes:    { tpl: 'tpl-quotes',    label: 'Quotes' },
+  projects:  { tpl: 'tpl-projects',  label: 'Projects' },
+  contact:   { tpl: 'tpl-contact',   label: 'Contact' },
+  guestbook: { tpl: 'tpl-guestbook', label: 'Guestbook' },
 };
 
 const MOODS = [
-  { key: 'Curious',  exp: 'curious',  wash: 'rgba(46,86,120,0.10)',  quote: 'Curiosity is the compass — follow it past the edge of the map.' },
-  { key: 'Happy',    exp: 'happy',    wash: 'rgba(196,148,42,0.10)', quote: 'Keep that light feeling; it makes the heavy work float.' },
-  { key: 'Inspired', exp: 'inspired', wash: 'rgba(120,74,140,0.10)', quote: 'Catch the spark quickly — ideas are shy and quick to drift.' },
-  { key: 'Calm',     exp: 'calm',     wash: 'rgba(70,118,90,0.10)',  quote: 'Move at the speed of a planet: slow, certain, never late.' },
-  { key: 'Tired',    exp: 'tired',    wash: 'rgba(86,84,108,0.12)',  quote: 'Even comets rest in the dark before their next bright pass.' },
+  { key: 'Curious',  exp: 'curious',  wash: 'rgba(46,86,120,0.10)',  quote: 'Curiosity is the compass — follow it to the edge of the map.' },
+  { key: 'Happy',    exp: 'happy',    wash: 'rgba(196,148,42,0.10)', quote: 'Hold on to that lightness; it makes heavy work feel like flight.' },
+  { key: 'Inspired', exp: 'inspired', wash: 'rgba(120,74,140,0.10)', quote: 'Catch the spark quickly — ideas are shy and easy to lose.' },
+  { key: 'Calm',     exp: 'calm',     wash: 'rgba(70,118,90,0.10)',  quote: 'Move at the speed of a planet: unhurried, certain, never late.' },
+  { key: 'Tired',    exp: 'tired',    wash: 'rgba(86,84,108,0.12)',  quote: 'Even comets rest in the dark before they blaze again.' },
 ];
 
 export function initUI(orrery) {
@@ -69,7 +70,7 @@ export function initUI(orrery) {
     applyWash(m.wash);
     setTimeout(() => {
       hide(dlgMood);
-      $('#quote-hi').textContent   = user.name ? `Here, ${user.name} — take this with you:` : 'Here, take this with you:';
+      $('#quote-hi').textContent   = user.name ? `Here, ${user.name} — carry this with you:` : 'Here, carry this with you:';
       $('#quote-text').textContent = m.quote;
       setTimeout(() => show(dlgQuote), 280);
     }, 360);
@@ -85,7 +86,7 @@ export function initUI(orrery) {
     hide(dlgQuote); hide(dlgMood); hide(dlgName); hide(scrim);
     orrery.ufoToOrbit();
     if (!user.mood) orrery.setUfoExpression('happy');
-    $('#greet-hi').textContent   = user.name ? `Hi, ${user.name}` : 'Welcome, traveler';
+    $('#greet-hi').textContent   = user.name ? `Hello, ${user.name}` : 'Welcome, traveller';
     $('#greet-mood').textContent = user.mood ? `feeling ${user.mood.key.toLowerCase()}` : '';
     $('#greet').classList.add('show');
     $('#hint').style.opacity   = 1;
@@ -110,7 +111,7 @@ export function initUI(orrery) {
     Object.entries(SECTIONS).forEach(([id, sec], i) => {
       const btn = document.createElement('button');
       btn.className   = 'opt';
-      btn.textContent = id.charAt(0).toUpperCase() + id.slice(1);
+      btn.textContent = sec.label;
       btn.dataset.ai  = i;
       btn.addEventListener('click', e => { e.stopPropagation(); closeRadial(); openPanel(id); });
       radial.appendChild(btn);
@@ -203,10 +204,10 @@ export function initUI(orrery) {
       const f    = Object.fromEntries(new FormData(form));
       const note = document.getElementById('contact-note');
       if (!f.name?.trim() || f.msg?.trim().length < 4) {
-        note.textContent = 'Add your name and a short note first.';
+        note.textContent = 'Please fill in your name and message before sending.';
         return;
       }
-      note.textContent = '✦ Sent into orbit — I\'ll answer soon.';
+      note.textContent = '✦ Sent into orbit — I\'ll reply soon.';
       form.querySelector('button[type="submit"]').style.display = 'none';
       form.reset();
     });
@@ -218,38 +219,72 @@ export function initUI(orrery) {
     if (!form || form.dataset.wired) return;
     form.dataset.wired = '1';
     renderGuestbookEntries();
-    form.addEventListener('submit', e => {
+    form.addEventListener('submit', async e => {
       e.preventDefault();
-      const f = Object.fromEntries(new FormData(form));
+      const f    = Object.fromEntries(new FormData(form));
+      const note = document.getElementById('guestbook-note');
       if (!f.thought?.trim()) return;
       const entry = {
-        name:    f.name?.trim() || 'Anonymous Traveler',
+        name:    f.name?.trim() || 'Anonymous traveller',
         thought: f.thought.trim().slice(0, 280),
-        date:    new Date().toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' }),
       };
-      const all = JSON.parse(localStorage.getItem('orrery-guestbook') || '[]');
-      all.unshift(entry);
-      localStorage.setItem('orrery-guestbook', JSON.stringify(all.slice(0, 30)));
-      document.getElementById('guestbook-note').textContent = '✦ Your thought is now drifting through this system.';
+
+      if (supabase) {
+        const { error } = await supabase.from('guestbook_entries').insert(entry);
+        if (error) {
+          note.textContent = '✗ Could not send — please try again.';
+          return;
+        }
+      } else {
+        // localStorage fallback (dev without Supabase keys)
+        const local = { ...entry, date: new Date().toLocaleDateString('vi', { day: 'numeric', month: 'short', year: 'numeric' }) };
+        const all = JSON.parse(localStorage.getItem('orrery-guestbook') || '[]');
+        all.unshift(local);
+        localStorage.setItem('orrery-guestbook', JSON.stringify(all.slice(0, 30)));
+      }
+
+      note.textContent = '✦ Your thought is now drifting through the system.';
       form.reset();
       renderGuestbookEntries();
     });
   }
 
-  function renderGuestbookEntries() {
+  async function renderGuestbookEntries() {
     const el = document.getElementById('guestbook-entries');
     if (!el) return;
-    const all = JSON.parse(localStorage.getItem('orrery-guestbook') || '[]');
-    if (!all.length) { el.innerHTML = ''; return; }
-    el.innerHTML = '<p class="gb-heading">Thoughts from other travelers</p>' +
-      all.map(e => `
+
+    let entries = [];
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('guestbook_entries')
+        .select('name, thought, created_at')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (!error && data) {
+        entries = data.map(e => ({
+          name:    e.name || 'Anonymous traveller',
+          thought: e.thought,
+          date:    new Date(e.created_at).toLocaleDateString('vi', { day: 'numeric', month: 'short', year: 'numeric' }),
+        }));
+      }
+    } else {
+      entries = JSON.parse(localStorage.getItem('orrery-guestbook') || '[]');
+    }
+
+    if (!entries.length) { el.innerHTML = ''; return; }
+    el.innerHTML = '<p class="gb-heading">Thoughts from other travellers</p>' +
+      entries.map(e => `
         <div class="gb-entry">
           <div class="gb-meta">
-            <span class="gb-name">${e.name}</span>
+            <span class="gb-name">${escapeHtml(e.name)}</span>
             <span class="gb-date">${e.date}</span>
           </div>
-          <p class="gb-thought">"${e.thought}"</p>
+          <p class="gb-thought">"${escapeHtml(e.thought)}"</p>
         </div>`).join('');
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   // Kick off onboarding immediately

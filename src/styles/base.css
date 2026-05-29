@@ -19,6 +19,7 @@
   --font-hand: 'Caveat', cursive;              /* headings */
   --font-note: 'Architects Daughter', cursive; /* labels / UI */
   --font-body: 'Kalam', cursive;               /* body copy */
+  --font-ui:   'Architects Daughter', cursive; /* small UI chrome */
 
   /* organic, hand-drawn border radii */
   --doodle:   255px 15px 225px 15px / 15px 225px 15px 255px;

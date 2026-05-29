@@ -115,30 +115,30 @@ function OrreryTweaks({ orrery, uiHandle }) {
   return (
     <div ref={dragRef} style={{ ...S.panel, right: offsetRef.current.x, bottom: offsetRef.current.y }}>
       <div style={S.header} onMouseDown={onDragStart}>
-        <span style={S.title}>Tweaks</span>
-        <button style={S.close} onClick={() => setOpen(false)} title="Close (T)">✕</button>
+        <span style={S.title}>Tùy Chỉnh</span>
+        <button style={S.close} onClick={() => setOpen(false)} title="Đóng (T)">✕</button>
       </div>
 
-      <div style={S.section}>Motion</div>
+      <div style={S.section}>Chuyển Động</div>
       <div style={S.row}>
-        <div style={S.label}><span>Planet speed</span><span>{planetSpeed.toFixed(1)}×</span></div>
+        <div style={S.label}><span>Tốc độ hành tinh</span><span>{planetSpeed.toFixed(1)}×</span></div>
         <input type="range" style={S.slider} min={0} max={3} step={0.1} value={planetSpeed}
                onChange={e => setPlanetSpeed(Number(e.target.value))} />
       </div>
 
-      <div style={S.section}>Sky</div>
+      <div style={S.section}>Bầu Trời</div>
       <div style={S.row}>
-        <div style={S.label}><span>Stars & meteors</span><span>{density.toFixed(1)}×</span></div>
+        <div style={S.label}><span>Sao &amp; thiên thạch</span><span>{density.toFixed(1)}×</span></div>
         <input type="range" style={S.slider} min={0.3} max={2.4} step={0.1} value={density}
                onChange={e => setDensity(Number(e.target.value))} />
       </div>
 
-      <div style={S.section}>Intro</div>
+      <div style={S.section}>Giới Thiệu</div>
       <button style={S.btn}
               onMouseEnter={e => { e.target.style.background = '#2b2926'; e.target.style.color = '#f4efe4'; }}
               onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = '#2b2926'; }}
               onClick={() => uiHandle?.replayIntro()}>
-        Replay UFO intro
+        Phát lại giới thiệu UFO
       </button>
     </div>
   );
