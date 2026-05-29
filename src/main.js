@@ -10,6 +10,8 @@ import { initUI }       from './ui/controller.js';
 import { mountTweaks }  from './ui/tweaks.jsx';
 
 const orrery   = createOrrery();
+orrery.init();                    // build planets, stars, start animation loop
+
 const uiHandle = initUI(orrery);
 
 mountTweaks(orrery, uiHandle);
