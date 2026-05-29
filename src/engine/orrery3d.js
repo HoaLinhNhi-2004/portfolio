@@ -415,7 +415,8 @@ export function createOrrery() {
   }
 
   // ── Click detection ──
-  const tmp = new THREE.Vector3();
+  const tmp    = new THREE.Vector3();
+  const occRay = new THREE.Raycaster();   // reused every frame for label occlusion
   let down  = null;
 
   renderer.domElement.addEventListener('pointerdown', e => {
@@ -451,17 +452,32 @@ export function createOrrery() {
   // ── DOM label projection ──
   function updateLabel(id) {
     const o = planetObjs[id];
-    // Hide all labels while panel is open — they'd overlap the planet preview canvas
     if (document.body.classList.contains('panel-open')) {
-      o.lab.style.opacity = 0;
-      o.lab.style.pointerEvents = 'none';
-      return;
+      o.lab.style.opacity = 0; o.lab.style.pointerEvents = 'none'; return;
     }
-    o.holder.getWorldPosition(tmp);
-    tmp.y -= o.def.size + 6;
-    const v      = tmp.clone().project(camera);
-    const behind = v.z > 1;
-    if (behind) { o.lab.style.opacity = 0; o.lab.style.pointerEvents = 'none'; return; }
+
+    // Planet center in world space
+    const center = new THREE.Vector3();
+    o.holder.getWorldPosition(center);
+
+    // 3D occlusion test — ray from camera toward planet center
+    const selfMesh    = o.body.userData.mesh;
+    const camToCenter = center.clone().sub(camera.position);
+    const distCenter  = camToCenter.length();
+    occRay.set(camera.position, camToCenter.normalize());
+    // Test against sun + all other planet bodies
+    const testList = [sun.userData.mesh].concat(
+      clickable.filter(m => m.userData.type === 'planet' && m !== selfMesh)
+    );
+    const hits = occRay.intersectObjects(testList, false);
+    if (hits.length && hits[0].distance < distCenter - o.def.size * 0.6) {
+      o.lab.style.opacity = 0; o.lab.style.pointerEvents = 'none'; return;
+    }
+
+    // Project label anchor (just below planet equator)
+    center.y -= o.def.size + 6;
+    const v = center.project(camera);
+    if (v.z > 1) { o.lab.style.opacity = 0; o.lab.style.pointerEvents = 'none'; return; }
     const x = (v.x * 0.5 + 0.5) * innerWidth;
     const y = (-v.y * 0.5 + 0.5) * innerHeight;
     o.lab.style.transform    = `translate(-50%,0) translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
