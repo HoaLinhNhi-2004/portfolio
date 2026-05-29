@@ -523,14 +523,14 @@ export function createOrrery() {
     }
     resize();
 
-    preview = { canvas, renderer: pvRenderer, scene: pvScene, camera: pvCamera, sphere: null, afId: null, resize };
+    preview = { canvas, renderer: pvRenderer, scene: pvScene, camera: pvCamera, sphere: null, active: false, resize };
   }
 
   function showPlanetPreview(id) {
     const p = PLANETS.find(pl => pl.id === id); if (!p) return;
     ensurePreview();
 
-    if (preview.afId) { cancelAnimationFrame(preview.afId); preview.afId = null; }
+    preview.active = false;
     if (preview.sphere) { preview.scene.remove(preview.sphere); preview.sphere = null; }
 
     const radius = Math.min(p.size * 2.2, 62);
@@ -558,13 +558,7 @@ export function createOrrery() {
     preview.camera.position.set(0, 0, radius * 4);
     preview.camera.lookAt(0, 0, 0);
     preview.resize();
-
-    function pvLoop() {
-      sphere.rotation.y += 0.009;
-      preview.renderer.render(preview.scene, preview.camera);
-      preview.afId = requestAnimationFrame(pvLoop);
-    }
-    pvLoop();
+    preview.active = true;
 
     requestAnimationFrame(() => { preview.canvas.style.opacity = '1'; });
   }
@@ -572,9 +566,7 @@ export function createOrrery() {
   function hidePlanetPreview() {
     if (!preview) return;
     preview.canvas.style.opacity = '0';
-    setTimeout(() => {
-      if (preview.afId) { cancelAnimationFrame(preview.afId); preview.afId = null; }
-    }, 560);
+    setTimeout(() => { if (preview) preview.active = false; }, 560);
   }
 
   // ── Animation loop ──
@@ -654,6 +646,13 @@ export function createOrrery() {
 
     controls.update();
     renderer.render(scene, camera);
+
+    // Preview planet spins in sync with the main loop
+    if (preview?.active && preview.sphere) {
+      preview.sphere.rotation.y += dt * 1.0;
+      preview.renderer.render(preview.scene, preview.camera);
+    }
+
     Object.keys(planetObjs).forEach(updateLabel);
     requestAnimationFrame(loop);
   }
