@@ -99,6 +99,10 @@ body.panel-open { cursor: default; }
 .btn-sketch.accent { border-color: var(--accent); color: var(--accent); }
 .btn-sketch.accent:hover { background: var(--accent); color: var(--paper); }
 
+@media (pointer: coarse) {
+  body, body.dragging { cursor: default; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }

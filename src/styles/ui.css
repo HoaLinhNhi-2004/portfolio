@@ -59,6 +59,72 @@
   .hud-greet { font-size: 12px; }
 }
 
+@media (max-width: 600px) {
+  /* HUD — compact */
+  .hud-logo { top: 14px; left: 14px; gap: 8px; }
+  .hud-logo .seal { width: 28px; height: 28px; }
+  .hud-logo b     { font-size: 18px; }
+  .hud-logo small { font-size: 9px; letter-spacing: .1em; }
+
+  .hud-greet { top: 16px; right: 14px; }
+  .hud-greet .hi { font-size: 16px; }
+  .hud-greet .mood { font-size: 11px; }
+
+  .hud-hint { font-size: 12px; gap: 8px; padding: 6px 12px; bottom: 14px; }
+
+  /* Dialogs — tighter padding */
+  .dialog { padding: 26px 20px 20px; }
+  .dialog h2 { font-size: clamp(22px, 7vw, 32px); margin-bottom: 14px; }
+  .dialog p  { font-size: 15px; margin-bottom: 16px; }
+  .dialog .quote-line { font-size: 22px; }
+  .moods { gap: 8px; }
+  .mood-chip { font-size: 14px; padding: 7px 13px; }
+
+  /* Radial menu — smaller items */
+  #radial .opt { font-size: 14px; padding: 8px 14px; }
+
+  /* Panel — slide up from bottom */
+  #panel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 82vh;
+    border-radius: 20px 20px 0 0;
+    transform: translateY(calc(100% + 20px));
+  }
+  #panel.open { transform: translateY(0); }
+
+  /* Centered modal (guestbook) stays centered, full-width */
+  #panel.centered {
+    top: 50%; left: 50%;
+    bottom: auto; right: auto;
+    width: 94vw; height: auto;
+    border-radius: 16px;
+    transform: translate(-50%, -50%) scale(0.93);
+  }
+  #panel.centered.open { transform: translate(-50%, -50%) scale(1); }
+
+  #panel .sheet { padding: 44px 18px 32px; }
+
+  /* Panel content */
+  .sec-title { margin-bottom: 18px; }
+  .sec-body p { font-size: 16px; }
+
+  .facts .f { grid-template-columns: 80px 1fr; gap: 8px; }
+  .facts .f dd { font-size: 20px; }
+
+  .sketch-portrait { width: 90px; height: 90px; }
+
+  .proj-card h3 { font-size: 26px; }
+  .proj-card p  { font-size: 15px; }
+
+  .contact-links a { font-size: 22px; padding: 12px 4px; }
+
+  .quote q { font-size: clamp(22px, 5vw, 30px); }
+}
+
 /* ---- Scrim ---- */
 #scrim {
   position: fixed; inset: 0; z-index: 24;
